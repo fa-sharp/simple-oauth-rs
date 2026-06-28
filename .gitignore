@@ -1,0 +1,21 @@
+# Rust
+/target
+Cargo.lock
+
+# Env files
+.env*
+!.env.example
+
+# OS files
+.DS_Store
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Temporary files
+tmp/
+temp/
+*.tmp
