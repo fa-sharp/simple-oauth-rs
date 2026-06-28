@@ -1,5 +1,11 @@
-pub mod discord;
-pub mod github;
-pub mod google;
+//! Common OAuth providers
 
-pub mod oidc;
+mod discord;
+mod github;
+mod google;
+mod oidc;
+
+pub use discord::Discord;
+pub use github::GitHub;
+pub use google::Google;
+pub use oidc::Oidc;

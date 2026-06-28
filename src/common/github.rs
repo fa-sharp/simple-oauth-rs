@@ -32,7 +32,7 @@ impl SimpleOAuthProvider for GitHub {
         "https://api.github.com/user"
     }
 
-    fn create_request_headers(&self) -> Vec<(String, String)> {
+    fn addl_request_headers(&self) -> Vec<(String, String)> {
         vec![
             ("Accept".into(), "application/vnd.github+json".into()),
             ("User-Agent".into(), "fa-sharp/simple-oauth".into()),

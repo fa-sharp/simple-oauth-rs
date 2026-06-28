@@ -2,7 +2,10 @@ use std::{borrow::Cow, fmt::Debug};
 
 use serde::Deserialize;
 
+const REDACTED: &str = "[redacted]";
+
 /// OAuth2 authorization redirect URL, along with the state and PKCE verifier
+#[derive(Clone)]
 pub struct AuthorizeUrl {
     pub url: oauth2::url::Url,
     pub state: String,
@@ -11,15 +14,15 @@ pub struct AuthorizeUrl {
 impl Debug for AuthorizeUrl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AuthorizeUrl")
-            .field("url", &"--redacted--")
+            .field("url", &REDACTED)
             .field("state", &self.state)
-            .field("pkce_verifier", &"--redacted--")
+            .field("pkce_verifier", &REDACTED)
             .finish()
     }
 }
 
 /// User info returned by the OAuth provider
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UserInfo {
     /// The ID of the user at the OAuth provider
     pub id: String,
@@ -27,7 +30,7 @@ pub struct UserInfo {
     pub name: Option<String>,
     /// The user's email. Likely will not be included unless you add the proper email scope for the provider.
     ///
-    /// ⚠️ Do not rely on this for identifying the user. Use the `id` and the provider name.
+    /// ⚠️ Do not rely on this for identifying the user. Use the `id` and the name of the provider.
     pub email: Option<String>,
     /// Whether the user's email is verified. Not all providers return this in the user info.
     pub email_verified: Option<bool>,
@@ -36,6 +39,7 @@ pub struct UserInfo {
 }
 
 /// Standard OAuth2 token response
+#[derive(Clone)]
 pub struct StandardTokenResponse {
     pub access_token: String,
     pub refresh_token: Option<String>,
@@ -44,19 +48,21 @@ pub struct StandardTokenResponse {
 impl Debug for StandardTokenResponse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("StandardTokenResponse")
-            .field("access_token", &"--redacted--")
-            .field("refresh_token", &"--redacted--")
+            .field("access_token", &REDACTED)
+            .field("refresh_token", &REDACTED)
             .field("expires_in", &self.expires_in)
             .finish()
     }
 }
 
-pub struct OAuthCredentials<'a> {
-    pub client_id: Cow<'a, str>,
-    pub client_secret: Cow<'a, str>,
+/// OAuth2 client ID and secret
+#[derive(Clone)]
+pub struct OAuthCredentials<'c> {
+    pub client_id: Cow<'c, str>,
+    pub client_secret: Cow<'c, str>,
 }
-impl<'a> OAuthCredentials<'a> {
-    pub fn new(client_id: impl Into<Cow<'a, str>>, client_secret: impl Into<Cow<'a, str>>) -> Self {
+impl<'c> OAuthCredentials<'c> {
+    pub fn new(client_id: impl Into<Cow<'c, str>>, client_secret: impl Into<Cow<'c, str>>) -> Self {
         Self {
             client_id: client_id.into(),
             client_secret: client_secret.into(),
@@ -67,17 +73,16 @@ impl<'a> Debug for OAuthCredentials<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OAuthCredentials")
             .field("client_id", &self.client_id)
-            .field("client_secret", &"--redacted--")
+            .field("client_secret", &REDACTED)
             .finish()
     }
 }
 
 /// OIDC discovery document
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct OidcDiscovery {
     pub issuer: String,
     pub authorization_endpoint: String,
     pub token_endpoint: String,
     pub userinfo_endpoint: String,
-    pub scopes_supported: Option<Vec<String>>,
 }
