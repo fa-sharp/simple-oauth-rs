@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use crate::{SimpleOAuthProvider, types::UserInfo};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Discord;
 
 /// User info returned from Discord API
@@ -46,7 +46,8 @@ impl SimpleOAuthProvider for Discord {
             id: user_info.id,
             email: user_info.email,
             email_verified: user_info.verified,
-            name: user_info.global_name.or(Some(user_info.username)),
+            name: user_info.global_name,
+            username: Some(user_info.username),
             avatar_url,
         })
     }

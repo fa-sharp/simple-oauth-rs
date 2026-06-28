@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use crate::{SimpleOAuthProvider, types::UserInfo};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Google;
 
 /// User info from Google API
@@ -38,7 +38,8 @@ impl SimpleOAuthProvider for Google {
 
         Ok(UserInfo {
             id: user_info.sub,
-            name: user_info.name.or(user_info.preferred_username),
+            name: user_info.name,
+            username: user_info.preferred_username,
             email: user_info.email,
             email_verified: user_info.email_verified,
             avatar_url: user_info.picture,

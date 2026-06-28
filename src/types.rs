@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::Debug};
+use std::fmt::Debug;
 
 use serde::Deserialize;
 
@@ -28,7 +28,9 @@ pub struct UserInfo {
     pub id: String,
     /// The user's display name
     pub name: Option<String>,
-    /// The user's email. Likely will not be included unless you add the proper email scope for the provider.
+    /// The user's username
+    pub username: Option<String>,
+    /// The user's email. Will likely not be included unless you add the proper email scope for the provider.
     ///
     /// ⚠️ Do not rely on this for identifying the user. Use the `id` and the name of the provider.
     pub email: Option<String>,
@@ -57,19 +59,19 @@ impl Debug for StandardTokenResponse {
 
 /// OAuth2 client ID and secret
 #[derive(Clone)]
-pub struct OAuthCredentials<'c> {
-    pub client_id: Cow<'c, str>,
-    pub client_secret: Cow<'c, str>,
+pub struct OAuthCredentials {
+    pub client_id: String,
+    pub client_secret: String,
 }
-impl<'c> OAuthCredentials<'c> {
-    pub fn new(client_id: impl Into<Cow<'c, str>>, client_secret: impl Into<Cow<'c, str>>) -> Self {
+impl OAuthCredentials {
+    pub fn new(client_id: impl Into<String>, client_secret: impl Into<String>) -> Self {
         Self {
             client_id: client_id.into(),
             client_secret: client_secret.into(),
         }
     }
 }
-impl<'a> Debug for OAuthCredentials<'a> {
+impl Debug for OAuthCredentials {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OAuthCredentials")
             .field("client_id", &self.client_id)

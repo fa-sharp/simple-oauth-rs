@@ -1,3 +1,52 @@
+/*!
+Simple OAuth login and authorization, built on the [`oauth2`](https://docs.rs/oauth2/5.0.0/oauth2/) crate,
+including common OAuth providers.
+
+# Example
+
+```
+use simple_oauth::{SimpleOAuthClient, types::OAuthCredentials};
+
+let oauth_client = SimpleOAuthClient::builder()
+    .provider(simple_oauth::common::GitHub)
+    .credentials(OAuthCredentials::new("client-id", "client-secret"))
+    .build()
+    .unwrap();
+
+// Your server's callback URL
+let callback_url = "http://myserver/callback";
+
+// Build the authorization URL to redirect the user
+let auth_url = oauth_client
+    .authorize_url()
+    .redirect_url(callback_url)
+    .scopes(&["read:user", "user:email"])
+    .build()
+    .unwrap();
+
+// Save the state and PKCE verifier in cache/session
+let initial_state = auth_url.state;
+let pkce_verifier = auth_url.pkce_verifier;
+
+// In the callback route, extract the `code` and `state` query parameters
+let code = "returned_code";
+let state = "returned_state";
+
+// Perform token exchange, etc.
+// let token_response = oauth_client
+//     .exchange_code()
+//     .code(code)
+//     .state(state)
+//     .initial_state(&initial_state)
+//     .pkce_verifier(pkce_verifier)
+//     .redirect_url(callback_url)
+//     .build()
+//     .await
+//     .unwrap();
+```
+
+*/
+
 use bon::bon;
 use oauth2::{
     CsrfToken, HttpClientError, RequestTokenError, TokenResponse,
@@ -27,19 +76,23 @@ pub enum SimpleOAuthError {
     Deserialization(#[from] serde_json::Error),
 }
 
-pub struct SimpleOAuthClient<'c> {
+#[derive(Debug, Clone)]
+pub struct SimpleOAuthClient<P> {
     http_client: reqwest::Client,
     oauth_client: oauth2_reqwest::ReqwestClient,
-    provider: Box<dyn SimpleOAuthProvider>,
-    credentials: OAuthCredentials<'c>,
+    provider: P,
+    credentials: OAuthCredentials,
 }
 
 #[bon]
-impl<'c> SimpleOAuthClient<'c> {
+impl<P> SimpleOAuthClient<P>
+where
+    P: SimpleOAuthProvider,
+{
     #[builder]
     pub fn new(
-        provider: impl SimpleOAuthProvider + 'static,
-        credentials: OAuthCredentials<'c>,
+        provider: P,
+        credentials: OAuthCredentials,
         http_client: Option<&reqwest::Client>,
     ) -> Result<Self, SimpleOAuthError> {
         let http_client = if let Some(client) = http_client {
@@ -53,7 +106,7 @@ impl<'c> SimpleOAuthClient<'c> {
         Ok(Self {
             oauth_client: oauth2_reqwest::ReqwestClient::from(http_client.clone()),
             http_client,
-            provider: Box::new(provider),
+            provider,
             credentials,
         })
     }
@@ -72,20 +125,17 @@ impl<'c> SimpleOAuthClient<'c> {
         scopes: Option<&[&str]>,
     ) -> Result<AuthorizeUrl, SimpleOAuthError> {
         let credentials = self.credentials.clone();
-        let oauth_client =
-            BasicClient::new(oauth2::ClientId::new(credentials.client_id.into_owned()))
-                .set_client_secret(oauth2::ClientSecret::new(
-                    credentials.client_secret.into_owned(),
-                ))
-                .set_auth_uri(oauth2::AuthUrl::new(self.provider.authorize_url().into())?)
-                .set_redirect_uri(oauth2::RedirectUrl::new(redirect_url.into())?);
+        let oauth_client = BasicClient::new(oauth2::ClientId::new(credentials.client_id))
+            .set_client_secret(oauth2::ClientSecret::new(credentials.client_secret))
+            .set_auth_uri(oauth2::AuthUrl::new(self.provider.authorize_url().into())?)
+            .set_redirect_uri(oauth2::RedirectUrl::new(redirect_url)?);
         let (pkce_challenge, pkce_verifier) = oauth2::PkceCodeChallenge::new_random_sha256();
         let (url, state) = oauth_client
             .authorize_url(CsrfToken::new_random)
             .add_scopes(
                 scopes
                     .unwrap_or(self.provider.default_scopes())
-                    .into_iter()
+                    .iter()
                     .map(|s| oauth2::Scope::new((*s).to_owned())),
             )
             .set_pkce_challenge(pkce_challenge)
@@ -115,13 +165,10 @@ impl<'c> SimpleOAuthClient<'c> {
         }
 
         let credentials = self.credentials.clone();
-        let oauth_client =
-            BasicClient::new(oauth2::ClientId::new(credentials.client_id.into_owned()))
-                .set_client_secret(oauth2::ClientSecret::new(
-                    credentials.client_secret.into_owned(),
-                ))
-                .set_redirect_uri(oauth2::RedirectUrl::new(redirect_url.into())?)
-                .set_token_uri(oauth2::TokenUrl::new(self.provider.token_url().into())?);
+        let oauth_client = BasicClient::new(oauth2::ClientId::new(credentials.client_id))
+            .set_client_secret(oauth2::ClientSecret::new(credentials.client_secret))
+            .set_redirect_uri(oauth2::RedirectUrl::new(redirect_url)?)
+            .set_token_uri(oauth2::TokenUrl::new(self.provider.token_url().into())?);
         let token = oauth_client
             .exchange_code(oauth2::AuthorizationCode::new(code))
             .set_pkce_verifier(oauth2::PkceCodeVerifier::new(pkce_verifier))
@@ -142,12 +189,9 @@ impl<'c> SimpleOAuthClient<'c> {
         refresh_token: String,
     ) -> Result<StandardTokenResponse, SimpleOAuthError> {
         let credentials = self.credentials.clone();
-        let oauth_client =
-            BasicClient::new(oauth2::ClientId::new(credentials.client_id.into_owned()))
-                .set_client_secret(oauth2::ClientSecret::new(
-                    credentials.client_secret.into_owned(),
-                ))
-                .set_token_uri(oauth2::TokenUrl::new(self.provider.token_url().into())?);
+        let oauth_client = BasicClient::new(oauth2::ClientId::new(credentials.client_id))
+            .set_client_secret(oauth2::ClientSecret::new(credentials.client_secret))
+            .set_token_uri(oauth2::TokenUrl::new(self.provider.token_url().into())?);
         let token = oauth_client
             .exchange_refresh_token(&oauth2::RefreshToken::new(refresh_token))
             .request_async(&self.oauth_client)
@@ -167,7 +211,7 @@ impl<'c> SimpleOAuthClient<'c> {
             .http_client
             .get(self.provider.user_info_url())
             .bearer_auth(access_token);
-        for (name, val) in self.provider.addl_request_headers() {
+        for (name, val) in self.provider.additional_headers() {
             user_info_request = user_info_request.header(name, val);
         }
 
