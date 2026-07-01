@@ -40,16 +40,12 @@ pub async fn main() {
             "github-client-id",
             "github-client-secret",
         ))
+        .redirect_url(callback_url)
         .http_client(&state.http_client)
         .build()
         .unwrap()
         .clone();
-
-    let auth_url = oauth_client
-        .authorize_url()
-        .redirect_url(callback_url)
-        .build()
-        .unwrap();
+    let auth_url = oauth_client.authorize_url().build().unwrap();
 
     // Redirect the user to this URL from your route handler.
     let _redirect_to = auth_url.url;

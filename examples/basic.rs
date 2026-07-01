@@ -2,20 +2,20 @@ use simple_oauth::{SimpleOAuthClient, types::OAuthCredentials};
 
 #[tokio::main]
 pub async fn main() {
+    // Your server's callback URL
+    let callback_url = "http://myserver/auth/github/callback";
+
     let oauth_client = SimpleOAuthClient::builder()
         .provider(simple_oauth::common::GitHub)
         .credentials(OAuthCredentials::new("client-id", "client-secret"))
+        .redirect_url(callback_url)
         .http_client(&reqwest::Client::new()) // optionally pass in your own Reqwest client
         .build()
         .unwrap();
 
-    // Your server's callback URL
-    let callback_url = "http://myserver/callback";
-
     // Build the authorization URL to redirect the user
     let auth_url = oauth_client
         .authorize_url()
-        .redirect_url(callback_url)
         .scopes(&["read:user", "user:email"]) // if not provided, will use default limited scopes for basic user info
         .build()
         .unwrap();
@@ -36,12 +36,11 @@ pub async fn main() {
         .state(state)
         .initial_state(&initial_state) // use the saved initial state and PKCE verifier
         .pkce_verifier(pkce_verifier)
-        .redirect_url(callback_url)
         .build()
         .await
         .unwrap();
 
-    // Get user info from provider
+    // Get basic user info from provider
     let user_info = oauth_client
         .get_user_info(&token_response.access_token)
         .await

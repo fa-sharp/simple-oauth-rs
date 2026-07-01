@@ -7,49 +7,48 @@ including common OAuth providers.
 ```
 use simple_oauth::{SimpleOAuthClient, types::OAuthCredentials};
 
-let oauth_client = SimpleOAuthClient::builder()
-    .provider(simple_oauth::common::GitHub)
-    .credentials(OAuthCredentials::new("client-id", "client-secret"))
-    .build()
-    .unwrap();
+async fn example() {
+    let oauth_client = SimpleOAuthClient::builder()
+        .provider(simple_oauth::common::GitHub)
+        .credentials(OAuthCredentials::new("client-id", "client-secret"))
+        .redirect_url("https://myserver/auth/github/callback")
+        .build()
+        .unwrap();
 
-// Your server's callback URL
-let callback_url = "http://myserver/callback";
 
-// Build the authorization URL to redirect the user
-let auth_url = oauth_client
-    .authorize_url()
-    .redirect_url(callback_url)
-    .scopes(&["read:user", "user:email"])
-    .build()
-    .unwrap();
+    // Build the authorization URL to redirect the user
+    let auth_url = oauth_client
+        .authorize_url()
+        .scopes(&["read:user", "user:email"])
+        .build()
+        .unwrap();
 
-// Save the state and PKCE verifier in cache/session
-let initial_state = auth_url.state;
-let pkce_verifier = auth_url.pkce_verifier;
+    // Save the state and PKCE verifier in cache/session
+    let initial_state = auth_url.state;
+    let pkce_verifier = auth_url.pkce_verifier;
 
-// In the callback route, extract the `code` and `state` query parameters
-let code = "returned_code";
-let state = "returned_state";
+    // In the callback route, extract the `code` and `state` query parameters
+    let code = "returned_code";
+    let state = "returned_state";
 
-// Perform token exchange, etc.
-// let token_response = oauth_client
-//     .exchange_code()
-//     .code(code)
-//     .state(state)
-//     .initial_state(&initial_state)
-//     .pkce_verifier(pkce_verifier)
-//     .redirect_url(callback_url)
-//     .build()
-//     .await
-//     .unwrap();
+    // Perform token exchange, etc.
+    let token_response = oauth_client
+        .exchange_code()
+        .code(code)
+        .state(state)
+        .initial_state(&initial_state)
+        .pkce_verifier(pkce_verifier)
+        .build()
+        .await
+        .unwrap();
+}
 ```
 
 */
 
 use bon::bon;
 use oauth2::{
-    CsrfToken, HttpClientError, RequestTokenError, TokenResponse,
+    CsrfToken, EndpointNotSet, EndpointSet, HttpClientError, RequestTokenError, TokenResponse,
     basic::{BasicClient, BasicErrorResponse},
 };
 
@@ -79,9 +78,10 @@ pub enum SimpleOAuthError {
 #[derive(Debug, Clone)]
 pub struct SimpleOAuthClient<P> {
     http_client: reqwest::Client,
-    oauth_client: oauth2_reqwest::ReqwestClient,
+    oauth_http_client: oauth2_reqwest::ReqwestClient,
+    oauth_client:
+        BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet>,
     provider: P,
-    credentials: OAuthCredentials,
 }
 
 #[bon]
@@ -89,10 +89,11 @@ impl<P> SimpleOAuthClient<P>
 where
     P: SimpleOAuthProvider,
 {
-    #[builder]
+    #[builder(on(String, into))]
     pub fn new(
         provider: P,
         credentials: OAuthCredentials,
+        redirect_url: String,
         http_client: Option<&reqwest::Client>,
     ) -> Result<Self, SimpleOAuthError> {
         let http_client = if let Some(client) = http_client {
@@ -102,35 +103,30 @@ where
                 .redirect(reqwest::redirect::Policy::none())
                 .build()?
         };
+        let oauth_client = BasicClient::new(oauth2::ClientId::new(credentials.client_id))
+            .set_client_secret(oauth2::ClientSecret::new(credentials.client_secret))
+            .set_redirect_uri(oauth2::RedirectUrl::new(redirect_url)?)
+            .set_auth_uri(oauth2::AuthUrl::new(provider.authorize_url().into())?)
+            .set_token_uri(oauth2::TokenUrl::new(provider.token_url().into())?);
 
         Ok(Self {
-            oauth_client: oauth2_reqwest::ReqwestClient::from(http_client.clone()),
+            oauth_http_client: oauth2_reqwest::ReqwestClient::from(http_client.clone()),
             http_client,
+            oauth_client,
             provider,
-            credentials,
         })
     }
 
-    /// Build the URL to navigate the user to for authorization. You will need to specify your server's
-    /// redirect/callback URL.
-    /// **Make sure to save the returned state and PKCE verifier in a secure location, typically
-    /// in a server-side cache or session.**
+    /// Build the URL to navigate the user to for authorization. **Make sure to save the returned state and
+    /// PKCE verifier in a secure location, typically in a server-side cache or session.**
     ///
-    /// If scopes are not provided, will use default limited scopes to access basic user info (user ID and name only).
+    /// If scopes are not provided, will use default limited scopes for the provider to access basic user info (user ID and name only).
     /// If more info is needed, make sure to specify all needed scopes (e.g. if you need email, make sure to include the relevant scope).
     #[builder(on(String, into), finish_fn(name = "build"))]
-    pub fn authorize_url(
-        &self,
-        redirect_url: String,
-        scopes: Option<&[&str]>,
-    ) -> Result<AuthorizeUrl, SimpleOAuthError> {
-        let credentials = self.credentials.clone();
-        let oauth_client = BasicClient::new(oauth2::ClientId::new(credentials.client_id))
-            .set_client_secret(oauth2::ClientSecret::new(credentials.client_secret))
-            .set_auth_uri(oauth2::AuthUrl::new(self.provider.authorize_url().into())?)
-            .set_redirect_uri(oauth2::RedirectUrl::new(redirect_url)?);
+    pub fn authorize_url(&self, scopes: Option<&[&str]>) -> Result<AuthorizeUrl, SimpleOAuthError> {
         let (pkce_challenge, pkce_verifier) = oauth2::PkceCodeChallenge::new_random_sha256();
-        let (url, state) = oauth_client
+        let (url, state) = self
+            .oauth_client
             .authorize_url(CsrfToken::new_random)
             .add_scopes(
                 scopes
@@ -149,8 +145,8 @@ where
     }
 
     /// Exchange the returned code after authorization for an access/refresh token. Along with the
-    /// returned code and state, you will need to specify your redirect/callback URL and the
-    /// saved PKCE verifier and initial state (the state will be verified using a timing-resistant algorithm).
+    /// returned code and state, you will need to specify the saved PKCE verifier and initial state
+    /// (the state will be verified using a timing-resistant algorithm).
     #[builder(on(String, into), finish_fn(name = "build"))]
     pub async fn exchange_code(
         &self,
@@ -158,21 +154,15 @@ where
         state: &str,
         initial_state: &str,
         pkce_verifier: String,
-        redirect_url: String,
     ) -> Result<StandardTokenResponse, SimpleOAuthError> {
         if state.as_bytes().ct_ne(initial_state.as_bytes()).into() {
             return Err(SimpleOAuthError::StateMismatch);
         }
-
-        let credentials = self.credentials.clone();
-        let oauth_client = BasicClient::new(oauth2::ClientId::new(credentials.client_id))
-            .set_client_secret(oauth2::ClientSecret::new(credentials.client_secret))
-            .set_redirect_uri(oauth2::RedirectUrl::new(redirect_url)?)
-            .set_token_uri(oauth2::TokenUrl::new(self.provider.token_url().into())?);
-        let token = oauth_client
+        let token = self
+            .oauth_client
             .exchange_code(oauth2::AuthorizationCode::new(code))
             .set_pkce_verifier(oauth2::PkceCodeVerifier::new(pkce_verifier))
-            .request_async(&self.oauth_client)
+            .request_async(&self.oauth_http_client)
             .await?;
 
         Ok(StandardTokenResponse {
@@ -188,13 +178,10 @@ where
         &self,
         refresh_token: String,
     ) -> Result<StandardTokenResponse, SimpleOAuthError> {
-        let credentials = self.credentials.clone();
-        let oauth_client = BasicClient::new(oauth2::ClientId::new(credentials.client_id))
-            .set_client_secret(oauth2::ClientSecret::new(credentials.client_secret))
-            .set_token_uri(oauth2::TokenUrl::new(self.provider.token_url().into())?);
-        let token = oauth_client
+        let token = self
+            .oauth_client
             .exchange_refresh_token(&oauth2::RefreshToken::new(refresh_token))
-            .request_async(&self.oauth_client)
+            .request_async(&self.oauth_http_client)
             .await?;
 
         Ok(StandardTokenResponse {
