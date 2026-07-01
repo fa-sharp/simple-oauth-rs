@@ -46,6 +46,8 @@ async fn example() {
 
 */
 
+use std::borrow::Cow;
+
 use bon::bon;
 use oauth2::{
     CsrfToken, EndpointNotSet, EndpointSet, HttpClientError, RequestTokenError, TokenResponse,
@@ -97,7 +99,7 @@ where
         http_client: Option<&reqwest::Client>,
     ) -> Result<Self, SimpleOAuthError> {
         let http_client = if let Some(client) = http_client {
-            client.clone()
+            client.to_owned()
         } else {
             reqwest::Client::builder()
                 .redirect(reqwest::redirect::Policy::none())
@@ -121,21 +123,32 @@ where
     /// PKCE verifier in a secure location, typically in a server-side cache or session.**
     ///
     /// If scopes are not provided, will use default limited scopes for the provider to access basic user info (user ID and name only).
-    /// If more info is needed, make sure to specify all needed scopes (e.g. if you need email, make sure to include the relevant scope).
+    /// If more access is needed (e.g. email), make sure to specify all required scopes.
+    ///
+    /// You can optionally override the redirect URL, but make sure to pass in the exact same URL when calling
+    /// `exchange_code()`.
     #[builder(on(String, into), finish_fn(name = "build"))]
-    pub fn authorize_url(&self, scopes: Option<&[&str]>) -> Result<AuthorizeUrl, SimpleOAuthError> {
+    pub fn authorize_url(
+        &self,
+        redirect_url: Option<String>,
+        scopes: Option<&[&str]>,
+    ) -> Result<AuthorizeUrl, SimpleOAuthError> {
         let (pkce_challenge, pkce_verifier) = oauth2::PkceCodeChallenge::new_random_sha256();
-        let (url, state) = self
+        let mut auth_request = self
             .oauth_client
             .authorize_url(CsrfToken::new_random)
+            .set_pkce_challenge(pkce_challenge)
             .add_scopes(
                 scopes
                     .unwrap_or(self.provider.default_scopes())
                     .iter()
                     .map(|s| oauth2::Scope::new((*s).to_owned())),
-            )
-            .set_pkce_challenge(pkce_challenge)
-            .url();
+            );
+        if let Some(redirect_url) = redirect_url {
+            auth_request =
+                auth_request.set_redirect_uri(Cow::Owned(oauth2::RedirectUrl::new(redirect_url)?));
+        }
+        let (url, state) = auth_request.url();
 
         Ok(AuthorizeUrl {
             url,
@@ -147,6 +160,8 @@ where
     /// Exchange the returned code after authorization for an access/refresh token. Along with the
     /// returned code and state, you will need to specify the saved PKCE verifier and initial state
     /// (the state will be verified using a timing-resistant algorithm).
+    ///
+    /// If you set the redirect URL when calling `authorize_url()`, you must set the same URL here as well.
     #[builder(on(String, into), finish_fn(name = "build"))]
     pub async fn exchange_code(
         &self,
@@ -154,16 +169,20 @@ where
         state: &str,
         initial_state: &str,
         pkce_verifier: String,
+        redirect_url: Option<String>,
     ) -> Result<StandardTokenResponse, SimpleOAuthError> {
         if state.as_bytes().ct_ne(initial_state.as_bytes()).into() {
             return Err(SimpleOAuthError::StateMismatch);
         }
-        let token = self
+        let mut token_request = self
             .oauth_client
             .exchange_code(oauth2::AuthorizationCode::new(code))
-            .set_pkce_verifier(oauth2::PkceCodeVerifier::new(pkce_verifier))
-            .request_async(&self.oauth_http_client)
-            .await?;
+            .set_pkce_verifier(oauth2::PkceCodeVerifier::new(pkce_verifier));
+        if let Some(redirect_url) = redirect_url {
+            token_request =
+                token_request.set_redirect_uri(Cow::Owned(oauth2::RedirectUrl::new(redirect_url)?));
+        }
+        let token = token_request.request_async(&self.oauth_http_client).await?;
 
         Ok(StandardTokenResponse {
             access_token: token.access_token().secret().to_owned(),
