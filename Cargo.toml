@@ -1,8 +1,8 @@
 [package]
 name = "simple-oauth"
-version = "0.1.0"
+version = "0.1.0-beta"
 edition = "2024"
-rust-version = "1.90"
+rust-version = "1.94"
 description = "Simple OAuth2 login and authorization"
 repository = "https://github.com/fa-sharp/simple-oauth-rs"
 license = "MIT OR Apache-2.0"
