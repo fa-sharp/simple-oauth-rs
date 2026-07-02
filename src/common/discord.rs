@@ -49,6 +49,7 @@ impl SimpleOAuthProvider for Discord {
             name: user_info.global_name,
             username: Some(user_info.username),
             avatar_url,
+            ..Default::default()
         })
     }
 }

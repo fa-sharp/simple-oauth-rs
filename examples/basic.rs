@@ -40,7 +40,7 @@ pub async fn main() {
         .await
         .unwrap();
 
-    // Get basic user info from provider
+    // Get basic user info from provider (or perform your own API request with the token)
     let user_info = oauth_client
         .get_user_info(&token_response.access_token)
         .await

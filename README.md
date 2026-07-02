@@ -1,6 +1,5 @@
 # simple-oauth
-Simple OAuth login and authorization, built on top of the [`oauth2`](https://docs.rs/oauth2/5.0.0/oauth2/) crate,
-including common OAuth providers.
+Simple server-side OAuth2 login and authorization with the Authorization Code Flow, including common OAuth providers. Built on top of [`oauth2`](https://docs.rs/oauth2/5.0.0/oauth2/) and [`reqwest`](https://docs.rs/reqwest/0.13.4/reqwest/).
 
 ## Example
 
@@ -14,7 +13,6 @@ async fn example() {
         .redirect_url("https://myserver/auth/github/callback")
         .build()
         .unwrap();
-
 
     // Build the authorization URL to redirect the user
     let auth_url = oauth_client

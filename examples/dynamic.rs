@@ -11,6 +11,7 @@ use simple_oauth::{
 #[derive(Clone)]
 struct AppState {
     http_client: reqwest::Client,
+    /// Map of different OAuth providers
     providers: HashMap<&'static str, Arc<dyn SimpleOAuthProvider>>,
 }
 
@@ -19,9 +20,9 @@ pub async fn main() {
     let state = AppState {
         http_client: reqwest::Client::new(),
         providers: HashMap::from([
-            ("github", Arc::new(GitHub) as Arc<dyn SimpleOAuthProvider>),
-            ("google", Arc::new(Google) as Arc<dyn SimpleOAuthProvider>),
-            ("discord", Arc::new(Discord) as Arc<dyn SimpleOAuthProvider>),
+            ("github", Arc::new(GitHub) as _),
+            ("google", Arc::new(Google) as _),
+            ("discord", Arc::new(Discord) as _),
         ]),
     };
 
@@ -34,17 +35,19 @@ pub async fn main() {
         return;
     };
 
-    let oauth_client = SimpleOAuthClient::builder()
-        .provider(provider)
-        .credentials(OAuthCredentials::new(
-            "github-client-id",
-            "github-client-secret",
-        ))
-        .redirect_url(callback_url)
-        .http_client(&state.http_client)
-        .build()
-        .unwrap()
-        .clone();
+    // The OAuth client can take any provider with dynamic dispatch
+    let oauth_client: SimpleOAuthClient<Arc<dyn SimpleOAuthProvider>> =
+        SimpleOAuthClient::builder()
+            .provider(provider)
+            .credentials(OAuthCredentials::new(
+                "github-client-id",
+                "github-client-secret",
+            ))
+            .redirect_url(callback_url)
+            .http_client(&state.http_client)
+            .build()
+            .unwrap()
+            .clone();
     let auth_url = oauth_client.authorize_url().build().unwrap();
 
     // Redirect the user to this URL from your route handler.

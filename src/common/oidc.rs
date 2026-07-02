@@ -1,8 +1,6 @@
-use serde::Deserialize;
-
 use crate::{
     SimpleOAuthError, SimpleOAuthProvider,
-    types::{OidcDiscovery, UserInfo},
+    types::{OidcDiscovery, OidcUserInfo, UserInfo},
 };
 
 #[derive(Debug, Clone)]
@@ -10,17 +8,6 @@ pub struct Oidc {
     auth_endpoint: String,
     token_endpoint: String,
     userinfo_endpoint: String,
-}
-
-/// Standard OIDC user info shape
-#[derive(Debug, Deserialize)]
-struct OidcUserInfo {
-    sub: String,
-    name: Option<String>,
-    preferred_username: Option<String>,
-    email: Option<String>,
-    email_verified: Option<bool>,
-    picture: Option<String>,
 }
 
 impl Oidc {
@@ -81,6 +68,7 @@ impl SimpleOAuthProvider for Oidc {
             email: user_info.email,
             email_verified: user_info.email_verified,
             avatar_url: user_info.picture,
+            groups: user_info.groups,
         })
     }
 }

@@ -52,6 +52,7 @@ impl SimpleOAuthProvider for GitHub {
             email: info.email,
             email_verified: None,
             avatar_url: info.avatar_url,
+            ..Default::default()
         })
     }
 }

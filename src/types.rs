@@ -22,7 +22,7 @@ impl Debug for AuthorizeUrl {
 }
 
 /// User info returned by the OAuth provider
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct UserInfo {
     /// The ID of the user at the OAuth provider
     pub id: String,
@@ -38,6 +38,8 @@ pub struct UserInfo {
     pub email_verified: Option<bool>,
     /// The URL of the user's picture/avatar
     pub avatar_url: Option<String>,
+    /// The groups the user is a part of. Only included for certain OIDC providers.
+    pub groups: Option<Vec<String>>,
 }
 
 /// Standard OAuth2 token response
@@ -87,4 +89,16 @@ pub struct OidcDiscovery {
     pub authorization_endpoint: String,
     pub token_endpoint: String,
     pub userinfo_endpoint: String,
+}
+
+/// Standard OIDC user info shape
+#[derive(Debug, Deserialize)]
+pub struct OidcUserInfo {
+    pub sub: String,
+    pub name: Option<String>,
+    pub preferred_username: Option<String>,
+    pub email: Option<String>,
+    pub email_verified: Option<bool>,
+    pub picture: Option<String>,
+    pub groups: Option<Vec<String>>,
 }
