@@ -10,8 +10,9 @@ pub trait SimpleOAuthProvider: Debug + Send + Sync {
     fn token_url(&self) -> &str;
     /// The URL to fetch the user info from the provider
     fn user_info_url(&self) -> &str;
-    /// Minimum scopes needed to get basic profile info (id, name, username).
-    /// Email not included by default (user can specify that in custom scopes).
+    /// Minimum scopes needed to get basic profile info (id, name, username). Email is not included
+    /// by default - the user can specify that by passing
+    /// in custom scopes when calling `client.authorize_url()`
     fn default_scopes(&self) -> &'static [&'static str];
     /// Extract the user data from the provider's user response
     fn extract_user_info(&self, val: serde_json::Value) -> Result<UserInfo, serde_json::Error>;

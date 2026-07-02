@@ -4,7 +4,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use simple_oauth::{
     SimpleOAuthClient, SimpleOAuthProvider,
-    common::{Discord, GitHub, Google},
+    common::{Discord, GitHub, GitLab, Google},
     types::OAuthCredentials,
 };
 
@@ -21,6 +21,7 @@ pub async fn main() {
         http_client: reqwest::Client::new(),
         providers: HashMap::from([
             ("github", Arc::new(GitHub) as _),
+            ("gitlab", Arc::new(GitLab) as _),
             ("google", Arc::new(Google) as _),
             ("discord", Arc::new(Discord) as _),
         ]),
