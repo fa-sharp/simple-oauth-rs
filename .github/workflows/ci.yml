@@ -15,7 +15,7 @@ jobs:
     name: Test crate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Rust toolchain
         run: rustup toolchain install ${{ env.RUST_VERSION }} --profile minimal --no-self-update
       - name: Setup rust-cache
