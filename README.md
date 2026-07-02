@@ -3,7 +3,7 @@ Simple server-side OAuth2 login and authorization with the Authorization Code Fl
 
 ## Example
 
-```
+```rust
 use simple_oauth::{SimpleOAuthClient, types::OAuthCredentials};
 
 async fn example() {
