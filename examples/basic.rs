@@ -1,4 +1,4 @@
-use simple_oauth::{SimpleOAuthClient, types::OAuthCredentials};
+use simple_oauth::SimpleOAuthClient;
 
 #[tokio::main]
 pub async fn main() {
@@ -7,7 +7,7 @@ pub async fn main() {
 
     let oauth_client = SimpleOAuthClient::builder()
         .provider(simple_oauth::common::GitHub)
-        .credentials(OAuthCredentials::new("client-id", "client-secret"))
+        .credentials(("client-id", "client-secret"))
         .redirect_url(callback_url)
         .http_client(&reqwest::Client::new()) // optionally pass in your own Reqwest client
         .build()

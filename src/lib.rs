@@ -45,6 +45,7 @@ where
     P: SimpleOAuthProvider,
 {
     #[builder(on(String, into))]
+    #[builder(on(OAuthCredentials, into))]
     pub fn new(
         provider: P,
         credentials: OAuthCredentials,

@@ -81,6 +81,16 @@ impl Debug for OAuthCredentials {
             .finish()
     }
 }
+impl From<(String, String)> for OAuthCredentials {
+    fn from((id, secret): (String, String)) -> Self {
+        Self::new(id, secret)
+    }
+}
+impl From<(&str, &str)> for OAuthCredentials {
+    fn from((id, secret): (&str, &str)) -> Self {
+        Self::new(id, secret)
+    }
+}
 
 /// OIDC discovery document
 #[derive(Debug, Clone, Default, Deserialize)]

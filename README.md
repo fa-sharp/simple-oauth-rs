@@ -4,12 +4,12 @@ Simple server-side OAuth2 login and authorization with the Authorization Code Fl
 ## Example
 
 ```rust
-use simple_oauth::{SimpleOAuthClient, types::OAuthCredentials};
+use simple_oauth::SimpleOAuthClient;
 
 async fn example() {
     let oauth_client = SimpleOAuthClient::builder()
         .provider(simple_oauth::common::GitHub)
-        .credentials(OAuthCredentials::new("client-id", "client-secret"))
+        .credentials(("client-id", "client-secret"))
         .redirect_url("https://myserver/auth/github/callback")
         .build()
         .unwrap();

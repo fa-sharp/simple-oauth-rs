@@ -5,7 +5,6 @@ use std::{collections::HashMap, sync::Arc};
 use simple_oauth::{
     SimpleOAuthClient, SimpleOAuthProvider,
     common::{Discord, GitHub, GitLab, Google},
-    types::OAuthCredentials,
 };
 
 #[derive(Clone)]
@@ -40,10 +39,7 @@ pub async fn main() {
     let oauth_client: SimpleOAuthClient<Arc<dyn SimpleOAuthProvider>> =
         SimpleOAuthClient::builder()
             .provider(provider)
-            .credentials(OAuthCredentials::new(
-                "github-client-id",
-                "github-client-secret",
-            ))
+            .credentials(("github-client-id", "github-client-secret"))
             .redirect_url(callback_url)
             .http_client(&state.http_client)
             .build()
