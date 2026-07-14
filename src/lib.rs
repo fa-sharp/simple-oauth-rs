@@ -13,7 +13,6 @@ mod provider;
 pub mod types;
 
 pub use provider::SimpleOAuthProvider;
-use subtle::ConstantTimeEq;
 
 use crate::types::{AuthorizeUrl, OAuthCredentials, StandardTokenResponse, UserInfo};
 
@@ -111,23 +110,17 @@ where
         })
     }
 
-    /// Exchange the returned code after authorization for an access/refresh token. Along with the
-    /// returned code and state, you will need to specify the saved PKCE verifier and initial state
-    /// (the state will be verified using a timing-resistant algorithm).
+    /// Exchange the returned code after authorization for an access/refresh token. You will need to provide
+    /// the returned code and the saved PKCE verifier. Make sure to first verify the returned state if applicable.
     ///
     /// If you set the redirect URL when calling `authorize_url()`, you must set the same URL here as well.
     #[builder(on(String, into), finish_fn(name = "build"))]
     pub async fn exchange_code(
         &self,
         code: String,
-        state: &str,
-        initial_state: &str,
         pkce_verifier: String,
         redirect_url: Option<String>,
     ) -> Result<StandardTokenResponse, SimpleOAuthError> {
-        if state.as_bytes().ct_ne(initial_state.as_bytes()).into() {
-            return Err(SimpleOAuthError::StateMismatch);
-        }
         let mut token_request = self
             .oauth_client
             .exchange_code(oauth2::AuthorizationCode::new(code))

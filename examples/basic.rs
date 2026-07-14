@@ -20,21 +20,25 @@ pub async fn main() {
         .build()
         .unwrap();
 
-    // Save the state and PKCE verifier in cache/session
+    // Save the state and PKCE verifier in a secure, server-side cache/session
     let initial_state = auth_url.state;
     let pkce_verifier = auth_url.pkce_verifier;
 
     // Redirect the user to the authorization URL `auth_url.url`, then in the callback route,
     // extract the `code` and `state` query parameters
-    let code = "returned_code";
-    let state = "returned_state";
+    let _redirect_url = auth_url.url;
+    let returned_code = "returned_code";
+    let returned_state = "returned_state";
+
+    // If the initial state was stored in session, verify the returned state against initial state
+    if returned_state != initial_state {
+        panic!("State doesn't match");
+    }
 
     // Perform token exchange
     let token_response = oauth_client
         .exchange_code()
-        .code(code) // use the returned `code` and `state` query parameters
-        .state(state)
-        .initial_state(&initial_state) // use the saved initial state and PKCE verifier
+        .code(returned_code) // use the returned `code` query parameter
         .pkce_verifier(pkce_verifier)
         .build()
         .await

@@ -33,8 +33,6 @@ async fn example() {
     let token = oauth_client
         .exchange_code()
         .code(code)
-        .state(state)
-        .initial_state(&initial_state)
         .pkce_verifier(pkce_verifier)
         .build()
         .await
