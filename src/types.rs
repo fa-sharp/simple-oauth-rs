@@ -21,7 +21,7 @@ impl Debug for AuthorizeUrl {
     }
 }
 
-/// User info returned by the OAuth provider
+/// Normalized user info returned by the OAuth provider
 #[derive(Debug, Default, Clone)]
 pub struct UserInfo {
     /// The ID of the user at the OAuth provider
@@ -81,13 +81,11 @@ impl Debug for OAuthCredentials {
             .finish()
     }
 }
-impl From<(String, String)> for OAuthCredentials {
-    fn from((id, secret): (String, String)) -> Self {
-        Self::new(id, secret)
-    }
-}
-impl From<(&str, &str)> for OAuthCredentials {
-    fn from((id, secret): (&str, &str)) -> Self {
+impl<S> From<(S, S)> for OAuthCredentials
+where
+    S: Into<String>,
+{
+    fn from((id, secret): (S, S)) -> Self {
         Self::new(id, secret)
     }
 }
@@ -103,7 +101,7 @@ pub struct OidcDiscovery {
 
 /// Standard OIDC user info shape
 #[derive(Debug, Deserialize)]
-pub struct OidcUserInfo {
+pub(crate) struct OidcUserInfo {
     pub sub: String,
     pub name: Option<String>,
     pub preferred_username: Option<String>,

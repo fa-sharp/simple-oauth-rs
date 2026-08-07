@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::{SimpleOAuthProvider, types::UserInfo};
+use crate::{SimpleOAuthProvider, UserInfoProvider, types::UserInfo};
 
 #[derive(Debug, Clone)]
 pub struct GitHub;
@@ -27,12 +27,14 @@ impl SimpleOAuthProvider for GitHub {
     fn default_scopes(&self) -> &'static [&'static str] {
         &["read:user"]
     }
+}
 
+impl UserInfoProvider for GitHub {
     fn user_info_url(&self) -> &str {
         "https://api.github.com/user"
     }
 
-    fn additional_headers(&self) -> Vec<(String, String)> {
+    fn user_info_headers(&self) -> Vec<(String, String)> {
         vec![
             ("Accept".into(), "application/vnd.github+json".into()),
             ("User-Agent".into(), "fa-sharp/simple-oauth".into()),

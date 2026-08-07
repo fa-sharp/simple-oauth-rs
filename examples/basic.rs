@@ -16,7 +16,7 @@ pub async fn main() {
     // Build the authorization URL to redirect the user
     let auth_url = oauth_client
         .authorize_url()
-        .scopes(&["read:user", "user:email"]) // if not provided, will use default limited scopes for basic user info
+        .scopes(&["read:user", "user:email"]) // if not provided, will use the provider's default scopes
         .build()
         .unwrap();
 

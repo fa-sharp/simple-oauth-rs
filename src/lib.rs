@@ -12,7 +12,7 @@ pub mod common;
 mod provider;
 pub mod types;
 
-pub use provider::SimpleOAuthProvider;
+pub use provider::{SimpleOAuthProvider, UserInfoProvider};
 
 use crate::types::{AuthorizeUrl, OAuthCredentials, StandardTokenResponse, UserInfo};
 
@@ -76,8 +76,7 @@ where
     /// Build the URL to navigate the user to for authorization. **Make sure to save the returned state and
     /// PKCE verifier in a secure location, typically in a server-side cache or session.**
     ///
-    /// If scopes are not provided, will use default limited scopes for the provider to access basic user info (user ID and name only).
-    /// If more access is needed (e.g. email), make sure to specify all required scopes.
+    /// If scopes are not provided, this will use the provider's default scopes.
     ///
     /// You can optionally override the redirect URL, but make sure to pass in the exact same URL when calling
     /// `exchange_code()`.
@@ -157,15 +156,20 @@ where
             expires_in: token.expires_in(),
         })
     }
+}
 
+impl<P> SimpleOAuthClient<P>
+where
+    P: UserInfoProvider,
+{
     /// Retrieve user info from the provider using the access token. This is a convenience
-    /// method for when you only need basic info (e.g. id, name, email, avatar).
+    /// method for providers that support normalized user info (e.g. id, name, email, avatar).
     pub async fn get_user_info(&self, access_token: &str) -> Result<UserInfo, SimpleOAuthError> {
         let mut user_info_request = self
             .http_client
             .get(self.provider.user_info_url())
             .bearer_auth(access_token);
-        for (name, val) in self.provider.additional_headers() {
+        for (name, val) in self.provider.user_info_headers() {
             user_info_request = user_info_request.header(name, val);
         }
 

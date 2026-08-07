@@ -1,5 +1,5 @@
 use crate::{
-    SimpleOAuthError, SimpleOAuthProvider,
+    SimpleOAuthError, SimpleOAuthProvider, UserInfoProvider,
     types::{OidcDiscovery, OidcUserInfo, UserInfo},
 };
 
@@ -50,12 +50,14 @@ impl SimpleOAuthProvider for Oidc {
         &self.token_endpoint
     }
 
-    fn user_info_url(&self) -> &str {
-        &self.userinfo_endpoint
-    }
-
     fn default_scopes(&self) -> &'static [&'static str] {
         &["openid", "profile"]
+    }
+}
+
+impl UserInfoProvider for Oidc {
+    fn user_info_url(&self) -> &str {
+        &self.userinfo_endpoint
     }
 
     fn extract_user_info(&self, val: serde_json::Value) -> Result<UserInfo, serde_json::Error> {

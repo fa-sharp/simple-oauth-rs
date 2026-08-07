@@ -1,5 +1,5 @@
 use crate::{
-    SimpleOAuthProvider,
+    SimpleOAuthProvider, UserInfoProvider,
     types::{OidcUserInfo, UserInfo},
 };
 
@@ -15,12 +15,14 @@ impl SimpleOAuthProvider for GitLab {
         "https://gitlab.com/oauth/token"
     }
 
-    fn user_info_url(&self) -> &str {
-        "https://gitlab.com/oauth/userinfo"
-    }
-
     fn default_scopes(&self) -> &'static [&'static str] {
         &["openid", "profile"]
+    }
+}
+
+impl UserInfoProvider for GitLab {
+    fn user_info_url(&self) -> &str {
+        "https://gitlab.com/oauth/userinfo"
     }
 
     fn extract_user_info(&self, val: serde_json::Value) -> Result<UserInfo, serde_json::Error> {

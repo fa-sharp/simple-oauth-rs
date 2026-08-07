@@ -44,3 +44,28 @@ async fn example() {
     let _name = user.name;
 }
 ```
+
+## Custom providers
+
+If you only need authorization and token exchange, implement `SimpleOAuthProvider`:
+
+```rust
+#[derive(Debug, Clone)]
+struct MyProvider;
+
+impl simple_oauth::SimpleOAuthProvider for MyProvider {
+    fn authorize_url(&self) -> &str {
+        "https://provider.example/oauth/authorize"
+    }
+
+    fn token_url(&self) -> &str {
+        "https://provider.example/oauth/token"
+    }
+
+    fn default_scopes(&self) -> &'static [&'static str] {
+        &[]
+    }
+}
+```
+
+Providers that support normalized profile lookup can also implement `UserInfoProvider`, which enables `SimpleOAuthClient::get_user_info`.

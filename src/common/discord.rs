@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::{SimpleOAuthProvider, types::UserInfo};
+use crate::{SimpleOAuthProvider, UserInfoProvider, types::UserInfo};
 
 #[derive(Debug, Clone)]
 pub struct Discord;
@@ -28,7 +28,9 @@ impl SimpleOAuthProvider for Discord {
     fn default_scopes(&self) -> &'static [&'static str] {
         &["identify"]
     }
+}
 
+impl UserInfoProvider for Discord {
     fn user_info_url(&self) -> &str {
         "https://discord.com/api/v9/users/@me"
     }

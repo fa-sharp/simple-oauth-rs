@@ -1,5 +1,5 @@
 use crate::{
-    SimpleOAuthProvider,
+    SimpleOAuthProvider, UserInfoProvider,
     types::{OidcUserInfo, UserInfo},
 };
 
@@ -18,7 +18,9 @@ impl SimpleOAuthProvider for Google {
     fn token_url(&self) -> &str {
         "https://oauth2.googleapis.com/token"
     }
+}
 
+impl UserInfoProvider for Google {
     fn user_info_url(&self) -> &str {
         "https://openidconnect.googleapis.com/v1/userinfo"
     }
