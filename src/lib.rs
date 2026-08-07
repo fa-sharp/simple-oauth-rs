@@ -4,8 +4,7 @@ use std::borrow::Cow;
 
 use bon::bon;
 use oauth2::{
-    CsrfToken, EndpointNotSet, EndpointSet, HttpClientError, RequestTokenError, TokenResponse,
-    basic::{BasicClient, BasicErrorResponse},
+    Client, CsrfToken, HttpClientError, RequestTokenError, TokenResponse, basic::BasicErrorResponse,
 };
 
 pub mod common;
@@ -14,7 +13,10 @@ pub mod types;
 
 pub use provider::{SimpleOAuthProvider, UserInfoProvider};
 
-use crate::types::{AuthorizeUrl, OAuthCredentials, StandardTokenResponse, UserInfo};
+use crate::types::{
+    AuthorizeUrl, OAuthClient, OAuthCredentials, OAuthTokenResponse, StandardTokenResponse,
+    UserInfo,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SimpleOAuthError {
@@ -34,8 +36,7 @@ pub enum SimpleOAuthError {
 pub struct SimpleOAuthClient<P> {
     http_client: reqwest::Client,
     oauth_http_client: oauth2_reqwest::ReqwestClient,
-    oauth_client:
-        BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet>,
+    oauth_client: OAuthClient,
     provider: P,
 }
 
@@ -59,7 +60,7 @@ where
                 .redirect(reqwest::redirect::Policy::none())
                 .build()?
         };
-        let oauth_client = BasicClient::new(oauth2::ClientId::new(credentials.client_id))
+        let oauth_client = Client::new(oauth2::ClientId::new(credentials.client_id))
             .set_client_secret(oauth2::ClientSecret::new(credentials.client_secret))
             .set_redirect_uri(oauth2::RedirectUrl::new(redirect_url)?)
             .set_auth_uri(oauth2::AuthUrl::new(provider.authorize_url().into())?)
@@ -131,11 +132,7 @@ where
         }
         let token = token_request.request_async(&self.oauth_http_client).await?;
 
-        Ok(StandardTokenResponse {
-            access_token: token.access_token().secret().to_owned(),
-            refresh_token: token.refresh_token().map(|s| s.secret().to_owned()),
-            expires_in: token.expires_in(),
-        })
+        Ok(standard_token_response(token))
     }
 
     /// Exchange the refresh token for a new access token
@@ -150,11 +147,16 @@ where
             .request_async(&self.oauth_http_client)
             .await?;
 
-        Ok(StandardTokenResponse {
-            access_token: token.access_token().secret().to_owned(),
-            refresh_token: token.refresh_token().map(|s| s.secret().to_owned()),
-            expires_in: token.expires_in(),
-        })
+        Ok(standard_token_response(token))
+    }
+}
+
+fn standard_token_response(token: OAuthTokenResponse) -> StandardTokenResponse {
+    StandardTokenResponse {
+        access_token: token.access_token().secret().to_owned(),
+        refresh_token: token.refresh_token().map(|s| s.secret().to_owned()),
+        expires_in: token.expires_in(),
+        id_token: token.extra_fields().id_token.clone(),
     }
 }
 

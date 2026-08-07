@@ -1,8 +1,34 @@
 use std::fmt::Debug;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
+/// Redacted field for debug outputs
 const REDACTED: &str = "[redacted]";
+
+/// Type of the internal oauth2 client
+pub(crate) type OAuthClient = oauth2::Client<
+    oauth2::basic::BasicErrorResponse,
+    OAuthTokenResponse,
+    oauth2::basic::BasicTokenIntrospectionResponse,
+    oauth2::StandardRevocableToken,
+    oauth2::basic::BasicRevocationErrorResponse,
+    oauth2::EndpointSet,
+    oauth2::EndpointNotSet,
+    oauth2::EndpointNotSet,
+    oauth2::EndpointNotSet,
+    oauth2::EndpointSet,
+>;
+
+/// Type of the internal oauth2 token response
+pub(crate) type OAuthTokenResponse =
+    oauth2::StandardTokenResponse<OidcExtraTokenFields, oauth2::basic::BasicTokenType>;
+
+/// Struct to extract the ID token if it exists
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub(crate) struct OidcExtraTokenFields {
+    pub id_token: Option<String>,
+}
+impl oauth2::ExtraTokenFields for OidcExtraTokenFields {}
 
 /// OAuth2 authorization redirect URL, along with the state and PKCE verifier
 #[derive(Clone)]
@@ -47,6 +73,7 @@ pub struct UserInfo {
 pub struct StandardTokenResponse {
     pub access_token: String,
     pub refresh_token: Option<String>,
+    pub id_token: Option<String>,
     pub expires_in: Option<std::time::Duration>,
 }
 impl Debug for StandardTokenResponse {
@@ -54,6 +81,7 @@ impl Debug for StandardTokenResponse {
         f.debug_struct("StandardTokenResponse")
             .field("access_token", &REDACTED)
             .field("refresh_token", &REDACTED)
+            .field("id_token", &REDACTED)
             .field("expires_in", &self.expires_in)
             .finish()
     }
