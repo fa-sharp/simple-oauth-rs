@@ -24,8 +24,6 @@ pub enum SimpleOAuthError {
     Request(#[from] reqwest::Error),
     #[error("invalid url: {0}")]
     ParseUrl(#[from] oauth2::url::ParseError),
-    #[error("returned state did not match initial state")]
-    StateMismatch,
     #[error("token exchange error: {0}")]
     TokenExchange(#[from] RequestTokenError<HttpClientError<reqwest::Error>, BasicErrorResponse>),
     #[error("deserialization error: {0}")]
