@@ -71,9 +71,13 @@ pub struct UserInfo {
 /// Standard OAuth2 token response
 #[derive(Clone)]
 pub struct StandardTokenResponse {
+    /// Access token
     pub access_token: String,
+    /// Refresh token
     pub refresh_token: Option<String>,
+    /// ID token ⚠️ The ID token is not validated by this crate. You must manually validate the token.
     pub id_token: Option<String>,
+    /// The valid duration of the access token
     pub expires_in: Option<std::time::Duration>,
 }
 impl Debug for StandardTokenResponse {
