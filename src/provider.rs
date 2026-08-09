@@ -1,6 +1,6 @@
 use std::{fmt::Debug, sync::Arc};
 
-use crate::types::UserInfo;
+use crate::types::{OAuthCredentials, TokenAuthMethod, UserInfo};
 
 /// Trait for all OAuth providers
 pub trait SimpleOAuthProvider: Debug + Send + Sync {
@@ -9,7 +9,13 @@ pub trait SimpleOAuthProvider: Debug + Send + Sync {
     /// The token endpoint of the provider
     fn token_url(&self) -> &str;
     /// Default scopes used when building the provider's authorization URL.
-    fn default_scopes(&self) -> &'static [&'static str];
+    fn default_scopes(&self) -> &'static [&'static str] {
+        &[]
+    }
+    /// How the OAuth client should authenticate to the provider's token endpoint.
+    fn token_auth_method(&self) -> TokenAuthMethod {
+        TokenAuthMethod::BasicAuth
+    }
 }
 
 /// Trait for OAuth providers that support fetching normalized user info.
@@ -19,7 +25,7 @@ pub trait UserInfoProvider: SimpleOAuthProvider {
     /// Extract the user data from the provider's user response
     fn extract_user_info(&self, val: serde_json::Value) -> Result<UserInfo, serde_json::Error>;
     /// Additional headers to send when making user info requests to the provider
-    fn user_info_headers(&self) -> Vec<(String, String)> {
+    fn user_info_headers(&self, _credentials: &OAuthCredentials) -> Vec<(String, String)> {
         vec![]
     }
 }
@@ -37,6 +43,9 @@ where
     fn default_scopes(&self) -> &'static [&'static str] {
         (**self).default_scopes()
     }
+    fn token_auth_method(&self) -> TokenAuthMethod {
+        (**self).token_auth_method()
+    }
 }
 
 impl<T> UserInfoProvider for Box<T>
@@ -49,8 +58,8 @@ where
     fn extract_user_info(&self, val: serde_json::Value) -> Result<UserInfo, serde_json::Error> {
         (**self).extract_user_info(val)
     }
-    fn user_info_headers(&self) -> Vec<(String, String)> {
-        (**self).user_info_headers()
+    fn user_info_headers(&self, credentials: &OAuthCredentials) -> Vec<(String, String)> {
+        (**self).user_info_headers(credentials)
     }
 }
 
@@ -67,6 +76,9 @@ where
     fn default_scopes(&self) -> &'static [&'static str] {
         (**self).default_scopes()
     }
+    fn token_auth_method(&self) -> TokenAuthMethod {
+        (**self).token_auth_method()
+    }
 }
 
 impl<T> UserInfoProvider for Arc<T>
@@ -79,7 +91,7 @@ where
     fn extract_user_info(&self, val: serde_json::Value) -> Result<UserInfo, serde_json::Error> {
         (**self).extract_user_info(val)
     }
-    fn user_info_headers(&self) -> Vec<(String, String)> {
-        (**self).user_info_headers()
+    fn user_info_headers(&self, credentials: &OAuthCredentials) -> Vec<(String, String)> {
+        (**self).user_info_headers(credentials)
     }
 }

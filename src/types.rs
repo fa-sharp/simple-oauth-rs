@@ -30,6 +30,9 @@ pub(crate) struct OidcExtraTokenFields {
 }
 impl oauth2::ExtraTokenFields for OidcExtraTokenFields {}
 
+/// The token auth method (basic auth or request body)
+pub type TokenAuthMethod = oauth2::AuthType;
+
 /// OAuth2 authorization redirect URL, along with the state and PKCE verifier
 #[derive(Clone)]
 pub struct AuthorizeUrl {
@@ -105,20 +108,20 @@ impl OAuthCredentials {
         }
     }
 }
-impl Debug for OAuthCredentials {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("OAuthCredentials")
-            .field("client_id", &self.client_id)
-            .field("client_secret", &REDACTED)
-            .finish()
-    }
-}
 impl<S> From<(S, S)> for OAuthCredentials
 where
     S: Into<String>,
 {
     fn from((id, secret): (S, S)) -> Self {
         Self::new(id, secret)
+    }
+}
+impl Debug for OAuthCredentials {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OAuthCredentials")
+            .field("client_id", &self.client_id)
+            .field("client_secret", &REDACTED)
+            .finish()
     }
 }
 

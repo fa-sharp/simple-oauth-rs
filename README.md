@@ -66,7 +66,7 @@ impl simple_oauth::SimpleOAuthProvider for MyProvider {
     }
 
     fn default_scopes(&self) -> &'static [&'static str] {
-        &[]
+        &["profile"]
     }
 }
 ```

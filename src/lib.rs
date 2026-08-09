@@ -35,6 +35,7 @@ pub struct SimpleOAuthClient<P> {
     http_client: reqwest::Client,
     oauth_http_client: oauth2_reqwest::ReqwestClient,
     oauth_client: OAuthClient,
+    credentials: OAuthCredentials,
     provider: P,
 }
 
@@ -58,16 +59,18 @@ where
                 .redirect(reqwest::redirect::Policy::none())
                 .build()?
         };
-        let oauth_client = Client::new(oauth2::ClientId::new(credentials.client_id))
-            .set_client_secret(oauth2::ClientSecret::new(credentials.client_secret))
+        let oauth_client = Client::new(oauth2::ClientId::new(credentials.client_id.clone()))
+            .set_client_secret(oauth2::ClientSecret::new(credentials.client_secret.clone()))
             .set_redirect_uri(oauth2::RedirectUrl::new(redirect_url)?)
             .set_auth_uri(oauth2::AuthUrl::new(provider.authorize_url().into())?)
-            .set_token_uri(oauth2::TokenUrl::new(provider.token_url().into())?);
+            .set_token_uri(oauth2::TokenUrl::new(provider.token_url().into())?)
+            .set_auth_type(provider.token_auth_method());
 
         Ok(Self {
             oauth_http_client: oauth2_reqwest::ReqwestClient::from(http_client.clone()),
             http_client,
             oauth_client,
+            credentials,
             provider,
         })
     }
@@ -169,7 +172,7 @@ where
             .http_client
             .get(self.provider.user_info_url())
             .bearer_auth(access_token);
-        for (name, val) in self.provider.user_info_headers() {
+        for (name, val) in self.provider.user_info_headers(&self.credentials) {
             user_info_request = user_info_request.header(name, val);
         }
 
