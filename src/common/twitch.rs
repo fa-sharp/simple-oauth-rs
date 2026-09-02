@@ -32,6 +32,10 @@ impl SimpleOAuthProvider for Twitch {
         "https://id.twitch.tv/oauth2/token"
     }
 
+    fn revoke_url(&self) -> Option<&str> {
+        Some("https://id.twitch.tv/oauth2/revoke")
+    }
+
     fn token_auth_method(&self) -> TokenAuthMethod {
         TokenAuthMethod::RequestBody
     }

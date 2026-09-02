@@ -8,6 +8,7 @@ pub struct Oidc {
     auth_endpoint: String,
     token_endpoint: String,
     userinfo_endpoint: String,
+    revocation_endpoint: Option<String>,
 }
 
 impl Oidc {
@@ -16,6 +17,7 @@ impl Oidc {
             auth_endpoint: config.authorization_endpoint,
             token_endpoint: config.token_endpoint,
             userinfo_endpoint: config.userinfo_endpoint,
+            revocation_endpoint: config.revocation_endpoint,
         }
     }
 
@@ -37,6 +39,7 @@ impl Oidc {
             auth_endpoint: discovery.authorization_endpoint,
             token_endpoint: discovery.token_endpoint,
             userinfo_endpoint: discovery.userinfo_endpoint,
+            revocation_endpoint: discovery.revocation_endpoint,
         })
     }
 }
@@ -48,6 +51,10 @@ impl SimpleOAuthProvider for Oidc {
 
     fn token_url(&self) -> &str {
         &self.token_endpoint
+    }
+
+    fn revoke_url(&self) -> Option<&str> {
+        self.revocation_endpoint.as_deref()
     }
 
     fn default_scopes(&self) -> &'static [&'static str] {

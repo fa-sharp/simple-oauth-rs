@@ -15,6 +15,10 @@ impl SimpleOAuthProvider for GitLab {
         "https://gitlab.com/oauth/token"
     }
 
+    fn revoke_url(&self) -> Option<&str> {
+        Some("https://gitlab.com/oauth/revoke")
+    }
+
     fn default_scopes(&self) -> &'static [&'static str] {
         &["openid", "profile"]
     }

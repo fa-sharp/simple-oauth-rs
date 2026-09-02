@@ -1,4 +1,4 @@
-use simple_oauth::SimpleOAuthClient;
+use simple_oauth::{SimpleOAuthClient, types::RevokeTokenType};
 
 #[tokio::main]
 pub async fn main() {
@@ -54,10 +54,15 @@ pub async fn main() {
     let _email = user_info.email;
 
     // (if needed) refresh the token
-    let _new_token_response = oauth_client
-        .exchange_refresh_token()
-        .refresh_token(token_response.refresh_token.unwrap())
+    let new_token_response = oauth_client
+        .exchange_refresh_token(token_response.refresh_token.unwrap())
         .build()
+        .await
+        .unwrap();
+
+    // (if needed) revoke the token
+    let _ = oauth_client
+        .revoke_token(new_token_response.access_token, RevokeTokenType::Access)
         .await
         .unwrap();
 }

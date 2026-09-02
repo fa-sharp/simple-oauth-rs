@@ -8,6 +8,10 @@ pub trait SimpleOAuthProvider: Debug + Send + Sync {
     fn authorize_url(&self) -> &str;
     /// The token endpoint of the provider
     fn token_url(&self) -> &str;
+    /// The token revocation endpoint of the provider
+    fn revoke_url(&self) -> Option<&str> {
+        None
+    }
     /// Default scopes used when building the provider's authorization URL.
     fn default_scopes(&self) -> &'static [&'static str] {
         &[]
@@ -43,6 +47,9 @@ where
     fn default_scopes(&self) -> &'static [&'static str] {
         (**self).default_scopes()
     }
+    fn revoke_url(&self) -> Option<&str> {
+        (**self).revoke_url()
+    }
     fn token_auth_method(&self) -> TokenAuthMethod {
         (**self).token_auth_method()
     }
@@ -75,6 +82,9 @@ where
     }
     fn default_scopes(&self) -> &'static [&'static str] {
         (**self).default_scopes()
+    }
+    fn revoke_url(&self) -> Option<&str> {
+        (**self).revoke_url()
     }
     fn token_auth_method(&self) -> TokenAuthMethod {
         (**self).token_auth_method()

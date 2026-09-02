@@ -4,7 +4,8 @@ use std::borrow::Cow;
 
 use bon::bon;
 use oauth2::{
-    Client, CsrfToken, HttpClientError, RequestTokenError, TokenResponse, basic::BasicErrorResponse,
+    Client, CsrfToken, HttpClientError, RequestTokenError, RevocationErrorResponseType,
+    StandardErrorResponse, TokenResponse, basic::BasicErrorResponse,
 };
 
 pub mod common;
@@ -14,8 +15,8 @@ pub mod types;
 pub use provider::{SimpleOAuthProvider, UserInfoProvider};
 
 use crate::types::{
-    AuthorizeUrl, OAuthClient, OAuthCredentials, OAuthTokenResponse, StandardTokenResponse,
-    UserInfo,
+    AuthorizeUrl, OAuthClient, OAuthCredentials, OAuthTokenResponse, RevokeTokenType,
+    StandardTokenResponse, UserInfo,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -26,6 +27,14 @@ pub enum SimpleOAuthError {
     ParseUrl(#[from] oauth2::url::ParseError),
     #[error("token exchange error: {0}")]
     TokenExchange(#[from] RequestTokenError<HttpClientError<reqwest::Error>, BasicErrorResponse>),
+    #[error("token revocation error: {0}")]
+    TokenRevocation(
+        #[from]
+        RequestTokenError<
+            HttpClientError<reqwest::Error>,
+            StandardErrorResponse<RevocationErrorResponseType>,
+        >,
+    ),
     #[error("deserialization error: {0}")]
     Deserialization(#[from] serde_json::Error),
 }
@@ -64,7 +73,13 @@ where
             .set_redirect_uri(oauth2::RedirectUrl::new(redirect_url)?)
             .set_auth_uri(oauth2::AuthUrl::new(provider.authorize_url().into())?)
             .set_token_uri(oauth2::TokenUrl::new(provider.token_url().into())?)
-            .set_auth_type(provider.token_auth_method());
+            .set_auth_type(provider.token_auth_method())
+            .set_revocation_url_option(
+                provider
+                    .revoke_url()
+                    .map(|url| oauth2::RevocationUrl::new(url.into()))
+                    .transpose()?,
+            );
 
         Ok(Self {
             oauth_http_client: oauth2_reqwest::ReqwestClient::from(http_client.clone()),
@@ -95,7 +110,7 @@ where
             .set_pkce_challenge(pkce_challenge)
             .add_scopes(
                 scopes
-                    .unwrap_or(self.provider.default_scopes())
+                    .unwrap_or_else(|| self.provider.default_scopes())
                     .iter()
                     .map(|s| oauth2::Scope::new((*s).to_owned())),
             );
@@ -136,19 +151,51 @@ where
         Ok(standard_token_response(token))
     }
 
-    /// Exchange the refresh token for a new access token
+    /// Exchange the refresh token for a new access token. Can optionally specify scopes to request.
     #[builder(on(String, into), finish_fn(name = "build"))]
     pub async fn exchange_refresh_token(
         &self,
-        refresh_token: String,
+        #[builder(start_fn)] refresh_token: String,
+        scopes: Option<&[&str]>,
     ) -> Result<StandardTokenResponse, SimpleOAuthError> {
-        let token = self
-            .oauth_client
-            .exchange_refresh_token(&oauth2::RefreshToken::new(refresh_token))
+        let refresh_token = oauth2::RefreshToken::new(refresh_token);
+        let mut refresh_request = self.oauth_client.exchange_refresh_token(&refresh_token);
+        if let Some(scopes) = scopes {
+            refresh_request = refresh_request
+                .add_scopes(scopes.iter().map(|s| oauth2::Scope::new((*s).to_owned())));
+        }
+
+        let token = refresh_request
             .request_async(&self.oauth_http_client)
             .await?;
 
         Ok(standard_token_response(token))
+    }
+
+    /// Revoke the given token from the provider. This is a no-op if the provider
+    /// has no revocation URL.
+    pub async fn revoke_token(
+        &self,
+        token: impl Into<String>,
+        token_type: RevokeTokenType,
+    ) -> Result<(), SimpleOAuthError> {
+        if self.oauth_client.revocation_url().is_some() {
+            let token = match token_type {
+                RevokeTokenType::Access => oauth2::StandardRevocableToken::AccessToken(
+                    oauth2::AccessToken::new(token.into()),
+                ),
+                RevokeTokenType::Refresh => oauth2::StandardRevocableToken::RefreshToken(
+                    oauth2::RefreshToken::new(token.into()),
+                ),
+            };
+            self.oauth_client
+                .revoke_token(token)
+                .expect("already checked for revocation URL")
+                .request_async(&self.oauth_http_client)
+                .await?;
+        }
+
+        Ok(())
     }
 }
 

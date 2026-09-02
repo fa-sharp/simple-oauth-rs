@@ -15,7 +15,7 @@ pub(crate) type OAuthClient = oauth2::Client<
     oauth2::EndpointSet,
     oauth2::EndpointNotSet,
     oauth2::EndpointNotSet,
-    oauth2::EndpointNotSet,
+    oauth2::EndpointMaybeSet,
     oauth2::EndpointSet,
 >;
 
@@ -32,6 +32,12 @@ impl oauth2::ExtraTokenFields for OidcExtraTokenFields {}
 
 /// The token auth method (basic auth or request body)
 pub type TokenAuthMethod = oauth2::AuthType;
+
+/// The type of token to revoke (refresh or access)
+pub enum RevokeTokenType {
+    Refresh,
+    Access,
+}
 
 /// OAuth2 authorization redirect URL, along with the state and PKCE verifier
 #[derive(Clone)]
@@ -132,6 +138,7 @@ pub struct OidcDiscovery {
     pub authorization_endpoint: String,
     pub token_endpoint: String,
     pub userinfo_endpoint: String,
+    pub revocation_endpoint: Option<String>,
 }
 
 /// Standard OIDC user info shape

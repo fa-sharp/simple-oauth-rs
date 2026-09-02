@@ -25,6 +25,10 @@ impl SimpleOAuthProvider for Discord {
         "https://discord.com/api/oauth2/token"
     }
 
+    fn revoke_url(&self) -> Option<&str> {
+        Some("https://discord.com/api/oauth2/token/revoke")
+    }
+
     fn default_scopes(&self) -> &'static [&'static str] {
         &["identify"]
     }

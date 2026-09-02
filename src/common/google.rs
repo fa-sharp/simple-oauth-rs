@@ -18,6 +18,10 @@ impl SimpleOAuthProvider for Google {
     fn token_url(&self) -> &str {
         "https://oauth2.googleapis.com/token"
     }
+
+    fn revoke_url(&self) -> Option<&str> {
+        Some("https://oauth2.googleapis.com/revoke")
+    }
 }
 
 impl UserInfoProvider for Google {
